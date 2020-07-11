@@ -1,0 +1,201 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Criacao de um cluster NFS",
+    "Parameters": {
+        "KeyName": {
+            "Description": "Nome do par de chaves",
+            "Type": "AWS::EC2::KeyPair::KeyName",
+            "Default": "vall_key"    
+        },
+        "VPC": {
+            "Description": "O VPC a ser utilizado",
+			"Type": "AWS::EC2::VPC::Id",
+			"Default": "vpc-0af6b63fc583890ee"
+        },
+        "Subnet": {
+            "Description": "Subrede a ser utilizada",
+			"Type": "AWS::EC2::Subnet::Id",
+			"Default": "subnet-04dd013e1d5212f0f"
+        },
+        "InstanceType": {
+            "Description": "Tipo de instancia",
+            "Type": "String",
+            "Default": "t2.micro",
+            "AllowedValues": [
+                "t2.micro",
+                "t2.small",
+                "t2.medium"
+            ]
+        }
+    },
+    "Resources": {
+        "GrupoDeSeguranca": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Grupo de Seguranca",
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "SecurityGroupIngress": [
+                    {
+                        "CidrIp": "0.0.0.0/0",
+                        "FromPort": 22,
+                        "IpProtocol": "tcp",
+                        "ToPort": 22
+                    },
+                    {
+                        "CidrIp": "0.0.0.0/0",
+                        "FromPort": 2049,
+                        "IpProtocol": "tcp",
+                        "ToPort": 2049
+                    }
+                ]
+            }
+        },
+        "Master": {
+            "Type": "AWS::EC2::Instance",
+            "Properties": {
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Master"
+                    }
+                ],
+                "ImageId": "ami-024a64a6685d05041",
+                "InstanceType": {
+                    "Ref": "InstanceType"
+                },
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                "SecurityGroupIds": [
+                    {
+                        "Ref": "GrupoDeSeguranca"
+                    }
+                ],
+                "SubnetId": {
+                    "Ref": "Subnet"
+                },
+                 "UserData": {
+                    "Fn::Base64": {
+                        "Fn::Join": [
+                            "",
+                            [
+								"#!/bin/bash -ex \n",
+                                "curl -s https://raw.githubusercontent.com/AnttoniC/TAR/master/CF/nfsServer.sh | bash -ex \n"
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "Slave1": {
+            "Type": "AWS::EC2::Instance",
+            "Properties": {
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Slave1"
+                    }
+                ],
+                "ImageId": "ami-024a64a6685d05041",
+                "InstanceType": {
+                    "Ref": "InstanceType"
+                },
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                "SecurityGroupIds": [
+                    {
+                        "Ref": "GrupoDeSeguranca"
+                    }
+                ],
+                "SubnetId": {
+                    "Ref": "Subnet"
+                },
+                "UserData": {
+                    "Fn::Base64": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "#!/bin/bash -ex \n",
+                                "export ipS=\"",{"Fn::GetAtt": ["Master","PrivateIp"]},"\" \n",
+                                "curl -s https://raw.githubusercontent.com/AnttoniC/TAR/master/CF/nfsClient.sh | bash -ex \n"
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "Slave2": {
+            "Type": "AWS::EC2::Instance",
+            "Properties": {
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Slave2"
+                    }
+                ],
+                "ImageId": "ami-024a64a6685d05041",
+                "InstanceType": {
+                    "Ref": "InstanceType"
+                },
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                "SecurityGroupIds": [
+                    {
+                        "Ref": "GrupoDeSeguranca"
+                    }
+                ],
+                "SubnetId": {
+                    "Ref": "Subnet"
+                },
+                "UserData": {
+                    "Fn::Base64": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "#!/bin/bash -ex \n",
+                                "export ipS=\"",{"Fn::GetAtt": ["Master","PrivateIp"]},"\" \n",
+                                "curl -s https://raw.githubusercontent.com/AnttoniC/TAR/master/CF/nfsClient.sh | bash -ex \n"
+                            ]
+                        ]
+                    }
+                }
+            }
+        }
+    },
+    "Outputs": {
+        "EnderecoPublicoMaster": {
+            "Value": {
+                "Fn::GetAtt": [
+                    "Master",
+                    "PublicIp"
+                ]
+            },
+            "Description": "Endereco para acessar o Master"
+        },
+        "EnderecoSlave1": {
+            "Value": {
+                "Fn::GetAtt": [
+                    "Slave1",
+					"PrivateIp"
+					
+				]
+				
+            },
+            "Description": "Endereco para acesso ao Slave1"
+        },
+        "EnderecoSlave2": {
+            "Value": {
+                "Fn::GetAtt": [
+                    "Slave2",
+					"PrivateIp"
+					
+                ]
+            },
+            "Description": "Endereco para acesso ao Slave2"
+        }
+    }
+}
