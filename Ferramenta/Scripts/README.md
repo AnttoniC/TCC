@@ -1,1 +1,1 @@
-## Atividades e Scripts da Disciplina TAR
+## Scripts para configuração dos cluster
