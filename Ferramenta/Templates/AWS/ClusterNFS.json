@@ -1,0 +1,118 @@
+{
+	"AWSTemplateFormatVersion": "2010-09-09",
+	"Description": "Criacao de um cluster NFS",
+	"Parameters": {
+		"KeyName": {
+			"Description": "Nome do par de chaves",
+			"Type": "AWS::EC2::KeyPair::KeyName",
+			"Default": "mykey"
+		},
+		"VPC": {
+			"Description": "O VPC a ser utilizado",
+			"Type": "AWS::EC2::VPC::Id"
+		},
+		"Subnet": {
+			"Description": "Subrede a ser utilizada",
+			"Type": "AWS::EC2::Subnet::Id"
+		},
+		"InstanceType": {
+			"Description": "Tipo de instancia",
+			"Type": "String",
+			"Default": "t2.micro",
+			"AllowedValues": ["t2.micro", "t2.small", "t2.medium"]
+		},
+      
+      "ImageId": {
+         "Description": "Identificador da Imagem",
+         "Type": "String",
+         "Default": "ami-024a64a6685d05041"
+      }
+	},
+	"Resources": {
+		"GrupoDeSeguranca": {
+			"Type": "AWS::EC2::SecurityGroup",
+			"Properties": {
+				"GroupDescription": "Grupo de Seguranca para um Servidor Web",
+				"VpcId": {"Ref": "VPC"},
+				"SecurityGroupIngress": [{
+					"CidrIp": "0.0.0.0/0",
+					"FromPort": 80,
+					"IpProtocol": "tcp",
+					"ToPort": 80
+					
+				},{
+				"CidrIp": "0.0.0.0/0",	
+				    "FromPort": 22,
+					"IpProtocol": "tcp",
+					"ToPort": 22
+				}
+				    
+				]
+			}
+		},
+		
+		"Master": {
+			"Type": "AWS::EC2::Instance",
+			"Properties": {
+			    "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Master"
+                    }
+                ],
+
+				"ImageId": {"Ref":"ImageId"},
+				"InstanceType": {"Ref": "InstanceType"},
+				"KeyName": {"Ref": "KeyName"},
+				"SecurityGroupIds": [{"Ref": "GrupoDeSeguranca"}],
+				"SubnetId": {"Ref": "Subnet"}
+			}
+		},
+		"Slave1": {
+			"Type": "AWS::EC2::Instance",
+			"Properties": {
+			    "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Slave1"
+                    }
+                ],
+				"ImageId": {"Ref":"ImageId"},
+				"InstanceType": {"Ref": "InstanceType"},
+				"KeyName": {"Ref": "KeyName"},
+				"SecurityGroupIds": [{"Ref": "GrupoDeSeguranca"}],
+				"SubnetId": {"Ref": "Subnet"}
+			}
+		},
+		"Slave2": {
+			"Type": "AWS::EC2::Instance",
+			"Properties": {
+			    "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "Slave2"
+                    }
+                ],
+				"ImageId": {"Ref":"ImageId"},
+				"InstanceType": {"Ref": "InstanceType"},
+				"KeyName": {"Ref": "KeyName"},
+				"SecurityGroupIds": [{"Ref": "GrupoDeSeguranca"}],
+				"SubnetId": {"Ref": "Subnet"}
+			}
+		}
+	},
+	"Outputs": {
+		"EnderecoPublico": {
+			"Value": {"Fn::GetAtt": ["Master", "PublicIp"]},
+			"Description": "Endereco para acessar o master"
+		},
+      "EnderecoSlave1": {
+         "Value": {"Fn::GetAtt": ["Slave1", "PublicIp"]},
+         "Description": "Endereco para acesso ao Slave1"
+      },
+      "EnderecoSlave2": {
+         "Value": {"Fn::GetAtt": ["Slave2", "PublicIp"]},
+         "Description": "Endereco para acesso ao Slave2"
+      }
+	}
+}

@@ -3,22 +3,28 @@
 touch cluster_template.json
 
 read -p "Digite a quantidade de NÓS do Cluster: " N
+
+read -p "Qual a chave a ser usada: " KEYNAME
+aws ec2 create-key-pair --key-name $KEYNAME --query 'KeyMaterial' --output text > $KEYNAME.pem
+chmod 400 $KEYNAME.pem
+echo "A chave informada é: $KEYNAME"
+
 echo "[t2.micro,t2.small,t2.medium]"
 read -p "Digite o tipo de instancia dos NÓS do Cluster: " INSTANCETYPE
 echo "Tipo de Instancia a ser utilizado: $INSTANCETYPE"
 
 
 # Nome da chave que deseja usar
-KEYNAME=vall_key
-echo "Chave a ser utilizada: $KEYNAME"
+#KEYNAME=vall_key
+#echo "Chave a ser utilizada: $KEYNAME"
 
 # Recupera o ID de uma rede
-VPCID=$(aws ec2 describe-vpcs --filter "Name=tag:Name, Values=VPC-DEV" --query "Vpcs[0].VpcId" --output text)
-echo "ID do VPC: $VPCID"
+#VPCID=$(aws ec2 describe-vpcs --filter "Name=tag:Name, Values=ClusterVPC" --query "Vpcs[0].VpcId" --output text)
+#echo "ID do VPC: $VPCID"
 
 # Recupera o ID da subrede padrão do VPC
-SUBNETID=$(aws ec2 describe-subnets --filter "Name=vpc-id, Values=$VPCID" --query "Subnets[0].SubnetId" --output text)
-echo "ID da Subnet: $SUBNETID"
+#SUBNETID=$(aws ec2 describe-subnets --filter "Name=vpc-id, Values=$VPCID" --query "Subnets[0].SubnetId" --output text)
+#echo "ID da Subnet: $SUBNETID"
 
 # Gera nome único para a pilha
 STACKNAME="cluster"`date +%H%M%S`
@@ -31,18 +37,31 @@ cat << EOF >> cluster_template.json
         "KeyName": {
             "Description": "Nome do par de chaves",
             "Type": "AWS::EC2::KeyPair::KeyName",
-            "Default": "vall_key"    
+            "Default": "$KEYNAME"    
         },
-        "VPC": {
-            "Description": "O VPC a ser utilizado",
-			"Type": "AWS::EC2::VPC::Id",
-			"Default": "vpc-0af6b63fc583890ee"
+        
+        "FaixaIPVPC": {
+            "Description": "Faixa IP Utilizada no VPC",
+            "Type": "String",
+            "Default": "10.0.0.0/16",
+            "AllowedValues": [
+                "10.0.0.0/16",
+                "172.16.0.0/16",
+                "192.168.0.0/16"
+            ]
         },
-        "Subnet": {
-            "Description": "Subrede a ser utilizada",
-			"Type": "AWS::EC2::Subnet::Id",
-			"Default": "subnet-04dd013e1d5212f0f"
+        "FaixaIPSubrede": {
+            "Description": "Faixa IP Utilizada na Subrede",
+            "Type": "String",
+            "Default": "10.0.10.0/24",
+            "AllowedValues": [
+                "10.0.10.0/24",
+                "172.16.10.0/24",
+                "192.168.10.0/24"
+            ]
         },
+
+
         "InstanceType": {
             "Description": "Tipo de instancia",
             "Type": "String",
@@ -56,6 +75,84 @@ cat << EOF >> cluster_template.json
     }
     ,
     "Resources": {
+
+        "VPC": {
+            "Type": "AWS::EC2::VPC",
+            "Properties": {
+                "CidrBlock": {
+                    "Ref": "FaixaIPVPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "ClusterVPC"
+                    }
+                ]
+
+            }
+        },
+        "Subnet": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "CidrBlock": {
+                    "Ref": "FaixaIPSubrede"
+                },
+                "MapPublicIpOnLaunch" : "true"
+            }
+        },
+        "RoteadorInternet": {
+            "Type": "AWS::EC2::InternetGateway"
+            
+        },
+        
+        "LigacaoRoteadorVPC": {
+            "Type": "AWS::EC2::VPCGatewayAttachment",
+            "Properties": {
+                "InternetGatewayId": {
+                    "Ref": "RoteadorInternet"
+                },
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            }
+        },
+
+        "TabelaRoteamento": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+                
+            }
+        },
+        "EntradaTabelaRoteamento": {
+            "Type": "AWS::EC2::Route",
+            "Properties": {
+                "GatewayId": {
+                    "Ref": "RoteadorInternet"
+                },
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "RouteTableId": {
+                    "Ref": "TabelaRoteamento"
+                }
+            }
+        },
+        "LigacaoTabelaSubRede": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "Subnet"
+                },
+                "RouteTableId": {
+                    "Ref": "TabelaRoteamento"
+                }
+            }
+        },
+
         "GrupoDeSeguranca": {
             "Type": "AWS::EC2::SecurityGroup",
             "Properties": {
@@ -186,25 +283,43 @@ EOF
 aws cloudformation create-stack --stack-name "$STACKNAME" --template-body file://cluster_template.json --parameters \
 ParameterKey=InstanceType,ParameterValue=$INSTANCETYPE \
 ParameterKey=KeyName,ParameterValue=$KEYNAME \
-ParameterKey=VPC,ParameterValue=$VPCID \
-ParameterKey=Subnet,ParameterValue=$SUBNETID 
+ParameterKey=FaixaIPVPC,ParameterValue="10.0.0.0/16" \
+ParameterKey=FaixaIPSubrede,ParameterValue="10.0.10.0/24"
 
+STATUS_1=CREATE_COMPLETE
+STATUS_2=ROLLBACK_IN_PROGRESS
 STATUS=$(aws cloudformation describe-stacks --stack-name "$STACKNAME" --query 'Stacks[*].StackStatus' --output text)
-while [ $STATUS != "CREATE_COMPLETE" ]
-do
-    STATUS=$(aws cloudformation describe-stacks --stack-name "$STACKNAME" --query 'Stacks[*].StackStatus' --output text)
-    echo "Cluster em criação..."
-    sleep 10
+#echo $STATUS_1
+#echo $STATUS_2
+#echo $STATUS
+#while [ $STATUS != $STATUS_1 -o $STATUS != $STATUS_2 ]
+while [ $STATUS != "CREATE_COMPLETE" ] 
+do   
+STATUS=$(aws cloudformation describe-stacks --stack-name "$STACKNAME" --query 'Stacks[*].StackStatus' --output text)
+echo "Cluster em criação..."
+sleep 10
+echo "Status atual do cluster em: $STATUS"
 done
+
+if [ $STATUS = "CREATE_COMPLETE" ];
+   then
+   echo "Cluster criado."
+elif [ $STATUS = "ROLLBACK_IN_PROGRESS" ];
+    then
+    echo "Erro ao criado cluster."
+else
+echo "Algo deu errado na execução" 
+fi
 
 PUBLICIP=$(aws cloudformation describe-stacks --stack-name "$STACKNAME"  --query 'Stacks[*].Outputs[*].OutputValue' --output text)
 
-echo "Cluster criado."
 echo "Acesse em outro terminal por:"
-echo "ssh -i $KEYNAME.pem ubuntu@$PUBLICIP"
+echo "ssh -A $KEYNAME.pem ubuntu@$PUBLICIP"
 
 echo "Aperte [enter] duas vezes para finalizar o cluster."
 read -p "Primeira vez."
 read -p "Segunda vez."
 aws cloudformation delete-stack --stack-name $STACKNAME
+aws ec2 delete-key-pair --key-name $KEYNAME
 rm -rf cluster_template.json
+rm -rf $KEYNAME.pem
