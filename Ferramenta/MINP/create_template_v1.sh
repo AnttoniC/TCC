@@ -218,7 +218,7 @@ EOF
 for i in $(seq 1 $N);
   do
   i=$((i+0))
-  NodeName=No_$i
+  NodeName=Node0$i
   cat  << EOF >> cluster_template.json
   ,
   "$NodeName": {
@@ -251,7 +251,7 @@ for i in $(seq 1 $N);
                             "",
                             [
                                 "#!/bin/bash -ex \n",
-                                "export ipS=\"",{"Fn::GetAtt": ["Master","PrivateIp"]},"\" \n",
+                                "export ipS=\"",{"Fn::GetAtt": ["Mestre","PrivateIp"]},"\" \n",
                                 "curl -s https://raw.githubusercontent.com/AnttoniC/TAR/master/CF/nfsClient.sh | bash -ex \n"
                             ]
                         ]
@@ -266,14 +266,14 @@ cat << EOF >> cluster_template.json
 
    },
     "Outputs": {
-        "EnderecoPublicoMaster": {
+        "EnderecoPublicoMestre": {
             "Value": {
                 "Fn::GetAtt": [
-                    "Master",
+                    "Mestre",
                     "PublicIp"
                 ]
             },
-            "Description": "Endereco para acessar o Master"
+            "Description": "Endereco para acessar o Mestre"
         }
     }
   }
