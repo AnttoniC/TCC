@@ -176,13 +176,13 @@ cat << EOF >> cluster_template.json
                 ]
             }
         },
-        "Master": {
+        "Mestre": {
             "Type": "AWS::EC2::Instance",
             "Properties": {
                 "Tags": [
                     {
                         "Key": "Name",
-                        "Value": "Master"
+                        "Value": "Mestre"
                     }
                 ],
                 "ImageId": "ami-024a64a6685d05041",
@@ -218,16 +218,16 @@ EOF
 for i in $(seq 1 $N);
   do
   i=$((i+0))
-  SlaveName=Salve$i
+  NodeName=No_$i
   cat  << EOF >> cluster_template.json
   ,
-  "$SlaveName": {
+  "$NodeName": {
             "Type": "AWS::EC2::Instance",
             "Properties": {
                 "Tags": [
                     {
                         "Key": "Name",
-                        "Value": "$SlaveName"
+                        "Value": "$NodeName"
                     }
                 ],
                 "ImageId": "ami-024a64a6685d05041",
