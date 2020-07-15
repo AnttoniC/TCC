@@ -286,35 +286,31 @@ ParameterKey=KeyName,ParameterValue=$KEYNAME \
 ParameterKey=FaixaIPVPC,ParameterValue="10.0.0.0/16" \
 ParameterKey=FaixaIPSubrede,ParameterValue="10.0.10.0/24"
 
-STATUS_1=CREATE_COMPLETE
-STATUS_2=ROLLBACK_IN_PROGRESS
 STATUS=$(aws cloudformation describe-stacks --stack-name "$STACKNAME" --query 'Stacks[*].StackStatus' --output text)
-#echo $STATUS_1
-#echo $STATUS_2
-#echo $STATUS
-#while [ $STATUS != $STATUS_1 -o $STATUS != $STATUS_2 ]
-while [ $STATUS != "CREATE_COMPLETE" ] 
+var=1
+while [ $var -eq 1 ]
 do   
 STATUS=$(aws cloudformation describe-stacks --stack-name "$STACKNAME" --query 'Stacks[*].StackStatus' --output text)
 echo "Cluster em criação..."
 sleep 10
-echo "Status atual do cluster em: $STATUS"
-done
-
 if [ $STATUS = "CREATE_COMPLETE" ];
-   then
-   echo "Cluster criado."
+then
+    var=0
+    echo "Cluster criado."
 elif [ $STATUS = "ROLLBACK_IN_PROGRESS" ];
-    then
+then
+    var=0
     echo "Erro ao criado cluster."
 else
-echo "Algo deu errado na execução" 
+echo "Status atual do cluster em: $STATUS" 
 fi
+done
+
 
 PUBLICIP=$(aws cloudformation describe-stacks --stack-name "$STACKNAME"  --query 'Stacks[*].Outputs[*].OutputValue' --output text)
 
 echo "Acesse em outro terminal por:"
-echo "ssh -A $KEYNAME.pem ubuntu@$PUBLICIP"
+echo "ssh -i $KEYNAME.pem ubuntu@$PUBLICIP"
 
 echo "Aperte [enter] duas vezes para finalizar o cluster."
 read -p "Primeira vez."
