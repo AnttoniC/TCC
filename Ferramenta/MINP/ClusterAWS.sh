@@ -310,8 +310,6 @@ ParameterKey=KeyName,ParameterValue=$KEYNAME \
 ParameterKey=FaixaIPVPC,ParameterValue="10.0.0.0/16" \
 ParameterKey=FaixaIPSubrede,ParameterValue="10.0.10.0/24"
 
-#eval $(ssh-agent -s)
-#ssh-add $KEYNAME.pem
 
 STATUS=$(aws cloudformation describe-stacks --stack-name "$STACKNAME" --query 'Stacks[*].StackStatus' --output text)
 var=1
