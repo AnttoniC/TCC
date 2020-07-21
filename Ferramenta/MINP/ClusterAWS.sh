@@ -336,8 +336,11 @@ done
 
 PUBLICIP=$(aws cloudformation describe-stacks --stack-name "$STACKNAME"  --query 'Stacks[*].Outputs[*].OutputValue' --output text)
 
-echo "Acesse em outro terminal por:"
-echo "ssh -i $KEYNAME.pem ubuntu@$PUBLICIP"
+
+echo "Acesse em outro terminal e execute a seguencia de comandos:"
+echo "eval $(ssh-agent -s)"
+echo "ssh-add $KEYNAME.pem"
+echo "ssh -A ubuntu@$PUBLICIP"
 
 echo "Aperte [enter] duas vezes para finalizar o cluster."
 read -p "Primeira vez."
