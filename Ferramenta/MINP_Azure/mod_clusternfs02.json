@@ -1,0 +1,279 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "vmUbuntuName": {
+        "type": "string"
+  
+      },
+      "vmUbuntuAdminUserName": {
+        "type": "string"
+      },
+  
+      "vmUbuntuAuthenticationType": {
+        "type": "string",
+        "defaultValue": "senha",
+        "allowedValues": [
+          "sshPublicKey",
+          "senha"
+        ]
+      },
+      "vmUbuntuPasswordOrKey": {
+        "type": "securestring"
+      },
+  
+      "vmUbuntuUbuntuOSVersion": {
+        "type": "string",
+        "defaultValue": "18.04-LTS",
+        "allowedValues": [
+          "12.04.5-LTS",
+          "14.04.2-LTS",
+          "16.04.0-LTS",
+          "18.04-LTS"
+        ]
+      },
+      "storageAccountName": {
+        "type": "string",
+        "defaultValue": "acstoragex4dbnhwbl3bay"
+      },
+      "storageAccountResourceGroup": {
+        "type": "string",
+        "defaultValue": "GP_Azure"
+      },
+      "vmIPDnsName": {
+        "type": "string",
+        "defaultValue": "ipdns"
+  
+      },
+      "networkSecurityGroupName": {
+        "type": "string",
+        "defaultValue": "sg_Azure"
+      },
+      "_artifactsLocation": {
+        "defaultValue": "https://raw.githubusercontent.com/AnttoniC/TAR/master/Azure",
+        "type": "string"
+  
+      }
+  
+      },
+      "variables": {
+        "acsNetPrefix": "10.0.0.0/16",
+        "acsNetSubnet1Name": "Subnet-1",
+        "acsNetSubnet1Prefix": "10.0.0.0/24",
+        "acsNetSubnet2Name": "Subnet-2",
+        "acsNetSubnet2Prefix": "10.0.1.0/24",
+        "vmUbuntuImagePublisher": "Canonical",
+        "vmUbuntuImageOffer": "UbuntuServer",
+        "vmUbuntuOSDiskName": "[parameters('vmUbuntuName')]",
+        "vmUbuntuVmSize": "Standard_D2_v2",
+        "vmUbuntuVnetID": "[resourceId('Microsoft.Network/virtualNetworks', 'acsNet')]",
+        "vmUbuntuSubnetRef": "[concat(variables('vmUbuntuVnetID'), '/subnets/', variables('acsNetSubnet1Name'))]",
+        "vmUbuntuStorageAccountContainerName": "vhds",
+        "vmUbuntuNicName": "[concat(parameters('vmUbuntuName'), 'NetworkInterface')]",
+        "vmIPName": "vmIP",
+        "linuxConfiguration": {
+          "disablePasswordAuthentication": true,
+          "ssh": {
+            "publicKeys": [
+              {
+                "path": "[concat('/home/', parameters('vmUbuntuAdminUserName'), '/.ssh/authorized_keys')]",
+                "keyData": "[parameters('vmUbuntuPasswordOrKey')]"
+              }
+            ]
+          }
+        }
+      },
+      "resources": [
+        {
+          "name": "acsNet",
+          "type": "Microsoft.Network/virtualNetworks",
+          "location": "[resourceGroup().location]",
+          "apiVersion": "2016-03-30",
+          "dependsOn": [],
+          "tags": {
+            "displayName": "acsNet"
+          },
+          "properties": {
+            "addressSpace": {
+              "addressPrefixes": [
+                "[variables('acsNetPrefix')]"
+              ]
+            },
+            "subnets": [
+              {
+                "name": "[variables('acsNetSubnet1Name')]",
+                "properties": {
+                  "addressPrefix": "[variables('acsNetSubnet1Prefix')]",
+                  "privateEndpointNetworkPolicies": "Enabled",
+                  "privateLinkServiceNetworkPolicies": "Enabled"
+                }
+              },
+              {
+                "name": "[variables('acsNetSubnet2Name')]",
+                "properties": {
+                  "addressPrefix": "[variables('acsNetSubnet2Prefix')]"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "[parameters('networkSecurityGroupName')]",
+          "apiVersion": "2016-03-30",
+          "type": "Microsoft.Network/networkSecurityGroups",
+          "location": "[resourceGroup().location]",
+          "properties": {
+            "securityRules": [
+              {
+                "name": "SSH",
+                "properties": {
+                  "priority": 1000,
+                  "protocol": "TCP",
+                  "access": "Allow",
+                  "direction": "Inbound",
+                  "sourceAddressPrefix": "*",
+                  "sourcePortRange": "*",
+                  "destinationAddressPrefix": "*",
+                  "destinationPortRange": "22"
+                }
+              }
+            ]
+          }
+  
+        },
+        {
+          "name": "[variables('vmUbuntuNicName')]",
+          "type": "Microsoft.Network/networkInterfaces",
+          "location": "[resourceGroup().location]",
+          "apiVersion": "2016-03-30",
+          "dependsOn": [
+            "[resourceId('Microsoft.Network/networkSecurityGroups/', parameters('networkSecurityGroupName'))]",
+            "[resourceId('Microsoft.Network/virtualNetworks', 'acsNet')]",
+            "[resourceId('Microsoft.Network/publicIPAddresses', variables('vmIPName'))]"
+          ],
+          "tags": {
+            "displayName": "vmUbuntuNic"
+          },
+          "properties": {
+            "ipConfigurations": [
+              {
+                "name": "ipconfig1",
+                "properties": {
+                  "privateIPAllocationMethod": "Dynamic",
+                  "subnet": {
+                    "id": "[variables('vmUbuntuSubnetRef')]"
+                  },
+                  "publicIPAddress": {
+                    "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('vmIPName'))]"
+                  },
+                  "networkSecurityGroup": {
+                    "id": "[resourceId('Microsoft.Network/networkSecurityGroups',parameters('networkSecurityGroupName'))]"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "[parameters('vmUbuntuName')]",
+          "type": "Microsoft.Compute/virtualMachines",
+          "location": "centralus",
+          "apiVersion": "2015-06-15",
+          "dependsOn": [
+            "[resourceId('Microsoft.Network/networkInterfaces', variables('vmUbuntuNicName'))]"
+          ],
+          "tags": {
+            "displayName": "vmUbuntu"
+          },
+          "properties": {
+            "hardwareProfile": {
+              "vmSize": "[variables('vmUbuntuVmSize')]"
+            },
+            "osProfile": {
+              "computerName": "[parameters('vmUbuntuName')]",
+              "adminUsername": "[parameters('vmUbuntuAdminUsername')]",
+              "adminPassword": "[parameters('vmUbuntuPasswordOrKey')]",
+              "linuxConfiguration": "[if(equals(parameters('vmUbuntuAuthenticationType'), 'password'), json('null'), variables('linuxConfiguration'))]"
+            },
+            "storageProfile": {
+              "imageReference": {
+                "publisher": "[variables('vmUbuntuImagePublisher')]",
+                "offer": "[variables('vmUbuntuImageOffer')]",
+                "sku": "[parameters('vmUbuntuUbuntuOSVersion')]",
+                "version": "latest"
+              },
+              "osDisk": {
+                "name": "[parameters('vmUbuntuName')]",
+                "vhd": {
+                  "uri": "[concat(reference(resourceId(parameters('storageAccountResourceGroup'), 'Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2016-01-01').primaryEndpoints.blob, variables('vmUbuntuStorageAccountContainerName'), '/', variables('vmUbuntuOSDiskName'), '.vhd')]"
+                },
+                "caching": "ReadWrite",
+                "createOption": "FromImage"
+              }
+            },
+            "networkProfile": {
+              "networkInterfaces": [
+                {
+                  "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('vmUbuntuNicName'))]"
+                }
+              ]
+            }
+          }
+        },
+  
+  
+        {
+          "type": "Microsoft.Compute/virtualMachines/extensions",
+          "name": "[concat(parameters('vmUbuntuName'),'/installcustomscript')]",
+          "apiVersion": "2015-05-01-preview",
+          "location": "[resourceGroup().location]",
+          "dependsOn": [
+            "[concat('Microsoft.Compute/virtualMachines/', parameters('vmUbuntuName'))]"
+          ],
+          "properties": {
+            "publisher": "Microsoft.Azure.Extensions",
+            "type": "CustomScript",
+            "typeHandlerVersion": "2.0",
+            "autoUpgradeMinorVersion": true,
+            "settings": {
+              "fileUris": [
+                "[concat(parameters('_artifactsLocation'), '/Teste.sh')]"
+              ],
+              "commandToExecute": "./Teste.sh"
+            }
+          }
+        },
+        {
+          "name": "[variables('vmIPName')]",
+          "type": "Microsoft.Network/publicIPAddresses",
+          "location": "[resourceGroup().location]",
+          "apiVersion": "2016-03-30",
+          "dependsOn": [],
+          "tags": {
+            "displayName": "vmIP"
+          },
+          "properties": {
+            "publicIPAllocationMethod": "Dynamic",
+            "dnsSettings": {
+              "domainNameLabel": "[parameters('vmIPDnsName')]"
+            }
+          }
+        }
+      ],
+      "outputs": {
+        "vmUser": {
+          "type": "string",
+          "value": "[parameters('vmUbuntuAdminUserName')]"
+        },
+  
+        "vmIP": {
+          "type": "string",
+          "value": "[reference(variables('vmIPName')).dnsSettings.fqdn]"
+        },
+        "ComandoSSH": {
+          "type": "string",
+          "value": "[concat('ssh ', parameters('vmUbuntuAdminUserName'), '@', reference(variables('vmIPName')).dnsSettings.fqdn)]"
+        }
+      }
+    }
+  

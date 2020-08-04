@@ -1,0 +1,401 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "vm_ControllerName": {
+        "type": "string",
+        "minLength": 1
+      },
+      "vm_ControllerAdminUserName": {
+        "type": "string",
+        "minLength": 1
+      },
+      "vmControllerAuthenticationType": {
+        "type": "string",
+        "defaultValue": "sshPublicKey",
+        "allowedValues": [
+          "sshPublicKey",
+          "senha"
+        ]
+      },
+      "vm_ControllerPasswordOrKey": {
+        "type": "securestring"
+      },
+      "vm_ControllerUbuntuOSVersion": {
+        "type": "string",
+        "defaultValue": "18.04-LTS",
+        "allowedValues": [
+          "12.04.5-LTS",
+          "14.04.2-LTS",
+          "16.04.0-LTS",
+          "18.04-LTS"
+        ]
+      },
+      "storageAccountName": {
+        "type": "string",
+        "defaultValue": "azurestorange"
+      },
+      "storageAccountResourceGroup": {
+        "type": "string",
+        "defaultValue": "GP_Azure"
+      },
+      "vm_ComputeName": {
+        "type": "string",
+        "minLength": 1
+      },
+      "vm_ComputeAdminUserName": {
+        "type": "string",
+        "minLength": 1
+      },
+      "vmComputeAuthenticationType": {
+        "type": "string",
+        "defaultValue": "sshPublicKey",
+        "allowedValues": [
+          "sshPublicKey",
+          "senha"
+        ]
+      },
+      "vm_ComputePasswordOrKey": {
+        "type": "securestring"
+      },
+      "vm_ComputeUbuntuOSVersion": {
+        "type": "string",
+        "defaultValue": "18.04-LTS",
+        "allowedValues": [
+          "12.04.5-LTS",
+          "14.04.2-LTS",
+          "18.04-LTS"
+        ]
+      },
+      "ipControllerDnsName": {
+        "type": "string",
+        "defaultValue": "controllerdns",
+        "minLength": 1
+      },
+      "ipComputeDnsName": {
+        "type": "string",
+        "defaultValue": "computedns",
+        "minLength": 1
+      },
+      "networkSecurityGroupName": {
+        "type": "string",
+        "defaultValue": "sg_Cluster"
+      }
+  
+    },
+    "variables": {
+      "cluster_vnPrefix": "10.0.0.0/16",
+      "cluster_vnSubnet1Name": "Subnet-1",
+      "cluster_vnSubnet1Prefix": "10.0.0.0/24",
+      "cluster_vnSubnet2Name": "Subnet-2",
+      "cluster_vnSubnet2Prefix": "10.0.1.0/24",
+      "vm_ControllerImagePublisher": "Canonical",
+      "vm_ControllerImageOffer": "UbuntuServer",
+      "vm_ControllerOSDiskName": "vm_ControllerOSDisk",
+      "vm_ControllerVmSize": "Standard_D2_v2",
+      "vm_ControllerVnetID": "[resourceId('Microsoft.Network/virtualNetworks', 'cluster_vn')]",
+      "vm_ControllerSubnetRef": "[concat(variables('vm_ControllerVnetID'), '/subnets/', variables('cluster_vnSubnet1Name'))]",
+      "vm_ControllerStorageAccountContainerName": "vhds",
+      "vm_ControllerNicName": "[concat(parameters('vm_ControllerName'), 'NetworkInterface')]",
+      "linuxConfiguration1": {
+        "disablePasswordAuthentication": true,
+        "ssh": {
+          "publicKeys": [
+            {
+              "path": "[concat('/home/', parameters('vm_ControllerAdminUserName'), '/.ssh/authorized_keys')]",
+              "keyData": "[parameters('vm_ControllerPasswordOrKey')]"
+            }
+          ]
+        }
+      },
+  
+  
+      "vm_ComputeImagePublisher": "Canonical",
+      "vm_ComputeImageOffer": "UbuntuServer",
+      "vm_ComputeOSDiskName": "vm_ComputeOSDisk",
+      "vm_ComputeVmSize": "Standard_D2_v2",
+      "vm_ComputeVnetID": "[resourceId('Microsoft.Network/virtualNetworks', 'cluster_vn')]",
+      "vm_ComputeSubnetRef": "[concat(variables('vm_ComputeVnetID'), '/subnets/', variables('cluster_vnSubnet1Name'))]",
+      "vm_ComputeStorageAccountContainerName": "vhds",
+      "vm_ComputeNicName": "[concat(parameters('vm_ComputeName'), 'NetworkInterface')]",
+      "ipControllerName": "ipController",
+      "ipComputeName": "ipCompute",
+      "linuxConfiguration2": {
+        "disablePasswordAuthentication": true,
+        "ssh": {
+          "publicKeys": [
+            {
+              "path": "[concat('/home/', parameters('vm_ComputeAdminUserName'), '/.ssh/authorized_keys')]",
+              "keyData": "[parameters('vm_ComputePasswordOrKey')]"
+            }
+          ]
+        }
+      }
+  
+  
+    },
+    "resources": [
+      {
+        "name": "cluster_vn",
+        "type": "Microsoft.Network/virtualNetworks",
+        "location": "[resourceGroup().location]",
+        "apiVersion": "2016-03-30",
+        "dependsOn": [],
+        "tags": {
+          "displayName": "cluster_vn"
+        },
+        "properties": {
+          "addressSpace": {
+            "addressPrefixes": [
+              "[variables('cluster_vnPrefix')]"
+            ]
+          },
+          "subnets": [
+            {
+              "name": "[variables('cluster_vnSubnet1Name')]",
+              "properties": {
+                "addressPrefix": "[variables('cluster_vnSubnet1Prefix')]"
+              }
+            },
+            {
+              "name": "[variables('cluster_vnSubnet2Name')]",
+              "properties": {
+                "addressPrefix": "[variables('cluster_vnSubnet2Prefix')]"
+              }
+            }
+          ]
+        }
+      },
+  
+      {
+        "name": "[parameters('networkSecurityGroupName')]",
+        "apiVersion": "2016-03-30",
+        "type": "Microsoft.Network/networkSecurityGroups",
+        "location": "[resourceGroup().location]",
+        "properties": {
+          "securityRules": [
+            {
+              "name": "SSH",
+              "properties": {
+                "priority": 1000,
+                "protocol": "TCP",
+                "access": "Allow",
+                "direction": "Inbound",
+                "sourceAddressPrefix": "*",
+                "sourcePortRange": "*",
+                "destinationAddressPrefix": "*",
+                "destinationPortRange": "22"
+              }
+            }
+          ]
+        }
+  
+      },
+  
+      {
+        "name": "[variables('vm_ControllerNicName')]",
+        "type": "Microsoft.Network/networkInterfaces",
+        "location": "[resourceGroup().location]",
+        "apiVersion": "2016-03-30",
+        "dependsOn": [
+          "[resourceId('Microsoft.Network/networkSecurityGroups/', parameters('networkSecurityGroupName'))]",
+          "[resourceId('Microsoft.Network/virtualNetworks', 'cluster_vn')]",
+          "[resourceId('Microsoft.Network/publicIPAddresses', variables('ipControllerName'))]"
+        ],
+        "tags": {
+          "displayName": "vm_ControllerNic"
+        },
+        "properties": {
+          "ipConfigurations": [
+            {
+              "name": "ipconfig1",
+              "properties": {
+                "privateIPAllocationMethod": "Dynamic",
+                "subnet": {
+                  "id": "[variables('vm_ControllerSubnetRef')]"
+                },
+                "publicIPAddress": {
+                  "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('ipControllerName'))]"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[parameters('vm_ControllerName')]",
+        "type": "Microsoft.Compute/virtualMachines",
+        "location": "centralus",
+        "apiVersion": "2015-06-15",
+        "dependsOn": [
+          "[resourceId('Microsoft.Network/networkInterfaces', variables('vm_ControllerNicName'))]"
+        ],
+        "tags": {
+          "displayName": "vm_Controller"
+        },
+        "properties": {
+          "hardwareProfile": {
+            "vmSize": "[variables('vm_ControllerVmSize')]"
+          },
+          "osProfile": {
+            "computerName": "[parameters('vm_ControllerName')]",
+            "adminUsername": "[parameters('vm_ControllerAdminUsername')]",
+            "adminPassword": "[parameters('vm_ControllerPasswordOrKey')]"
+          },
+          "storageProfile": {
+            "imageReference": {
+              "publisher": "[variables('vm_ControllerImagePublisher')]",
+              "offer": "[variables('vm_ControllerImageOffer')]",
+              "sku": "[parameters('vm_ControllerUbuntuOSVersion')]",
+              "version": "latest"
+            },
+            "osDisk": {
+              "name": "vm_ControllerOSDisk",
+              "vhd": {
+                "uri": "[concat(reference(resourceId(parameters('storageAccountResourceGroup'), 'Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2016-01-01').primaryEndpoints.blob, variables('vm_ControllerStorageAccountContainerName'), '/', variables('vm_ControllerOSDiskName'), '.vhd')]"
+              },
+              "caching": "ReadWrite",
+              "createOption": "FromImage"
+            }
+          },
+          "networkProfile": {
+            "networkInterfaces": [
+              {
+                "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('vm_ControllerNicName'))]"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "[variables('vm_ComputeNicName')]",
+        "type": "Microsoft.Network/networkInterfaces",
+        "location": "[resourceGroup().location]",
+        "apiVersion": "2016-03-30",
+        "dependsOn": [
+          "[resourceId('Microsoft.Network/networkSecurityGroups/', parameters('networkSecurityGroupName'))]",
+          "[resourceId('Microsoft.Network/virtualNetworks', 'cluster_vn')]",
+          "[resourceId('Microsoft.Network/publicIPAddresses', variables('ipComputeName'))]"
+        ],
+        "tags": {
+          "displayName": "vm_ComputeNic"
+        },
+        "properties": {
+          "ipConfigurations": [
+            {
+              "name": "ipconfig1",
+              "properties": {
+                "privateIPAllocationMethod": "Dynamic",
+                "subnet": {
+                  "id": "[variables('vm_ComputeSubnetRef')]"
+                },
+                "publicIPAddress": {
+                  "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('ipComputeName'))]"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "[parameters('vm_ComputeName')]",
+        "type": "Microsoft.Compute/virtualMachines",
+        "location": "centralus",
+        "apiVersion": "2015-06-15",
+        "dependsOn": [
+          "[resourceId('Microsoft.Network/networkInterfaces', variables('vm_ComputeNicName'))]"
+        ],
+        "tags": {
+          "displayName": "vm_Compute"
+        },
+        "properties": {
+          "hardwareProfile": {
+            "vmSize": "[variables('vm_ComputeVmSize')]"
+          },
+          "osProfile": {
+            "computerName": "[parameters('vm_ComputeName')]",
+            "adminUsername": "[parameters('vm_ComputeAdminUsername')]",
+            "adminPassword": "[parameters('vm_ComputePasswordOrKey')]"
+          },
+          "storageProfile": {
+            "imageReference": {
+              "publisher": "[variables('vm_ComputeImagePublisher')]",
+              "offer": "[variables('vm_ComputeImageOffer')]",
+              "sku": "[parameters('vm_ComputeUbuntuOSVersion')]",
+              "version": "latest"
+            },
+            "osDisk": {
+              "name": "vm_ComputeOSDisk",
+              "vhd": {
+                "uri": "[concat(reference(resourceId(parameters('storageAccountResourceGroup'), 'Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2016-01-01').primaryEndpoints.blob, variables('vm_ComputeStorageAccountContainerName'), '/', variables('vm_ComputeOSDiskName'), '.vhd')]"
+              },
+              "caching": "ReadWrite",
+              "createOption": "FromImage"
+            }
+          },
+          "networkProfile": {
+            "networkInterfaces": [
+              {
+                "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('vm_ComputeNicName'))]"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "[variables('ipControllerName')]",
+        "type": "Microsoft.Network/publicIPAddresses",
+        "location": "[resourceGroup().location]",
+        "apiVersion": "2016-03-30",
+        "dependsOn": [],
+        "tags": {
+          "displayName": "ipController"
+        },
+        "properties": {
+          "publicIPAllocationMethod": "Dynamic",
+          "dnsSettings": {
+            "domainNameLabel": "[parameters('ipControllerDnsName')]"
+          }
+        }
+      },
+      {
+        "name": "[variables('ipComputeName')]",
+        "type": "Microsoft.Network/publicIPAddresses",
+        "location": "[resourceGroup().location]",
+        "apiVersion": "2016-03-30",
+        "dependsOn": [],
+        "tags": {
+          "displayName": "ipCompute"
+        },
+        "properties": {
+          "publicIPAllocationMethod": "Dynamic",
+          "dnsSettings": {
+            "domainNameLabel": "[parameters('ipComputeDnsName')]"
+          }
+        }
+      }
+  
+  
+    ],
+    "outputs": {
+      "vmUser": {
+        "type": "string",
+        "value": "[parameters('vm_ControllerName')]"
+      },
+  
+      "IPs": {
+        "type": "string",
+        "value": "[reference(variables('ipControllerName')).dnsSettings.fqdn]"
+        
+      },
+      "ComandoSSH1": {
+        "type": "string",
+        "value": "[concat('ssh ', parameters('vm_ControllerAdminUserName'), '@', reference(variables('ipControllerName')).dnsSettings.fqdn)]"
+      },
+      "ComandoSSH2": {
+        "type": "string",
+        "value": "[concat('ssh ', parameters('vm_ComputeAdminUserName'), '@', reference(variables('ipComputeName')).dnsSettings.fqdn)]"
+      }
+    }
+  }
+  
