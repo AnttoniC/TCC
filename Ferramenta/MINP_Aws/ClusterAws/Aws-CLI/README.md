@@ -2,7 +2,7 @@
 # AWS
 <br>
 
-![img](https://github.com/AnttoniC/Gerencia/blob/master/Img/zab2.jpg)
+![img](https://github.com/AnttoniC/TCC/blob/master/Ferramenta/MINP_Aws/ClusterAws/Aws-CLI/IMG/awscli.png)
 
 ## Pré-requisitos
 É necessário ter Python 2, versão 2.7 ou posterior, ou Python 3, versão 3.4 ou posterior instalado.
