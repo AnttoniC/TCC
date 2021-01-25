@@ -1,7 +1,7 @@
 #!/bin/bash
 #Pegado ip private e colocando no arquivo IPs.txt
-sudo apt -y install jq
-ipS=`curl -s -H Metadata:true http://169.254.169.254/metadata/instance?api-version=2017-04-02 | jq -r .network.interface[].ipv4.ipAddress[].publicIpAddress)`
+
+ipS=`hostname -I | cut -f1 -d' '`
 touch /home/ubuntu/IPs.txt
 echo $ipS >> /home/ubuntu/IPs.txt
 
