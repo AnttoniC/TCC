@@ -11,7 +11,7 @@ sudo apt -y install nfs-common
 sudo mkdir -p /home
 
 #Compartilhando o diretorio /home com os Clients no diretorio /home
-sudo mount 10.0.0.6:/home /home
+sudo mount 10.0.0.16:/home /home
 
 #  verificando montagem da pasta
 
