@@ -40,9 +40,12 @@ Criar nome do seu usuario e selecionar a caixa *Acesso Programático*
 ![img](https://github.com/AnttoniC/TCC/blob/master/Ferramenta/MINP_Aws/ClusterAws/Aws-CLI/IMG/add_IAM.png)
 
 **2 passo:**
-Criar um grupo para o usuario que estamos criando e atribuir políticas de acesso.<br>
+Criar um grupo para o usuario que estamos criando e atribuir políticas de acesso<br>
 ![img](https://github.com/AnttoniC/TCC/blob/master/Ferramenta/MINP_Aws/ClusterAws/Aws-CLI/IMG/addGroup01.png)
-![img](https://github.com/AnttoniC/TCC/blob/master/Ferramenta/MINP_Aws/ClusterAws/Aws-CLI/IMG/addGroup01.png)
+Digite o nome do seu grupo e selecione a permissão *AdministratorAccess* para ter acessos aos recursos e serviços através da AWS-CLI
+![img](https://github.com/AnttoniC/TCC/blob/master/Ferramenta/MINP_Aws/ClusterAws/Aws-CLI/IMG/groupCli.png)
+Selecione o grupo que criou
+![img](https://github.com/AnttoniC/TCC/blob/master/Ferramenta/MINP_Aws/ClusterAws/Aws-CLI/IMG/addGroup02.png)
 
 
 ## Entrar com as credenciais do usuário IAM através do comando: 
