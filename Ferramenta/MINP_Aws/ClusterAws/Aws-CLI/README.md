@@ -33,9 +33,17 @@ Se você ainda não tem o pip instalado, você pode instalá-lo usando o script 
 ## Etapa 4 - Criar um usuario IAM(Identity and Access Management) no console AWS.
 Para criar um ou mais usuários do IAM (console).<br>
 No painel de navegação, escolha *Usuários* e depois *Adicionar usuário*.<br>
-Segui os seguines passos abaixo:
-*1 passo:*
+
+Siga os seguines passos abaixo:
+**1 passo:**
+Criar nome do seu usuario e selecionar a caixa *Acesso Programático*
 ![img](https://github.com/AnttoniC/TCC/blob/master/Ferramenta/MINP_Aws/ClusterAws/Aws-CLI/IMG/add_IAM.png)
+
+**2 passo:**
+Criar um grupo para o usuario que estamos criando e atribuir políticas de acesso.<br>
+![img](https://github.com/AnttoniC/TCC/blob/master/Ferramenta/MINP_Aws/ClusterAws/Aws-CLI/IMG/addGroup01.png)
+![img](https://github.com/AnttoniC/TCC/blob/master/Ferramenta/MINP_Aws/ClusterAws/Aws-CLI/IMG/addGroup01.png)
+
 
 ## Entrar com as credenciais do usuário IAM através do comando: 
 `aws configure`
