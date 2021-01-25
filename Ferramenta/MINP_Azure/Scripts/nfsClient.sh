@@ -17,7 +17,7 @@ sudo mount 10.0.0.6:/home /home
 
 df -h
 
-#Compartilhando IP_Private com o Master para acessar os 
+#Compartilhando IP_Private com o Controller para acessar os 
 
 ip=`hostname -I | cut -f1 -d' '`
 echo $ip >> /home/ubuntu/IPs.txt
