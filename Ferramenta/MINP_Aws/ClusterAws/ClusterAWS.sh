@@ -2,7 +2,6 @@
 
 touch cluster_template.json
 
-
 NODE=""
 INSTANCETYPE=""
 
@@ -26,29 +25,11 @@ else
     echo JUST $INSTANCETYPE
   fi
 fi
-#read -p "Digite a quantidade de NÓS do Cluster: " n
 
+#criando chave para acessar as instancia do cluster
 KEYNAME=clusterKey
 aws ec2 create-key-pair --key-name $KEYNAME --query 'KeyMaterial' --output text > $KEYNAME.pem
 chmod 400 $KEYNAME.pem
-#echo "A chave informada é: $KEYNAME"
-
-#echo "[t2.micro,t2.small,t2.medium]"
-#read -p "Digite o tipo de instancia dos NÓS do Cluster: " INSTANCETYPE
-#echo "Tipo de Instancia a ser utilizado: $INSTANCETYPE"
-
-
-# Nome da chave que deseja usar
-#KEYNAME=vall_key
-#echo "Chave a ser utilizada: $KEYNAME"
-
-# Recupera o ID de uma rede
-#VPCID=$(aws ec2 describe-vpcs --filter "Name=tag:Name, Values=ClusterVPC" --query "Vpcs[0].VpcId" --output text)
-#echo "ID do VPC: $VPCID"
-
-# Recupera o ID da subrede padrão do VPC
-#SUBNETID=$(aws ec2 describe-subnets --filter "Name=vpc-id, Values=$VPCID" --query "Subnets[0].SubnetId" --output text)
-#echo "ID da Subnet: $SUBNETID"
 
 # Gera nome único para a pilha
 STACKNAME="cluster"`date +%H%M%S`
@@ -239,6 +220,8 @@ cat << EOF >> cluster_template.json
         }
 EOF
 
+#Criando os nós(Compute)
+
 for v in $(seq 1 $NODE);
   do
   v=$((v+0))
@@ -303,6 +286,7 @@ cat << EOF >> cluster_template.json
   }
 EOF
 
+#Implantação do template que foi criado acima
 
 aws cloudformation create-stack --stack-name "$STACKNAME" --template-body file://cluster_template.json --parameters \
 ParameterKey=InstanceType,ParameterValue=$INSTANCETYPE \
@@ -331,7 +315,7 @@ echo "Status atual do cluster em: $STATUS"
 fi
 done
 
-
+#Pegando ip pblico da instancia controller
 PUBLICIP=$(aws cloudformation describe-stacks --stack-name "$STACKNAME"  --query 'Stacks[*].Outputs[*].OutputValue' --output text)
 
 
