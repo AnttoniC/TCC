@@ -300,7 +300,7 @@ var=1
 while [ $var -eq 1 ]
 do   
 STATUS=$(aws cloudformation describe-stacks --stack-name "$STACKNAME" --query 'Stacks[*].StackStatus' --output text)
-echo "Cluster em criação..."
+
 sleep 10
 if [ $STATUS = "CREATE_COMPLETE" ];
 then
