@@ -320,7 +320,7 @@ PUBLICIP=$(aws cloudformation describe-stacks --stack-name "$STACKNAME"  --query
 
 
 echo "Acesse em outro terminal e execute a seguencia de comandos:"
-echo "eval $(ssh-agent -s)"
+echo "eval $``(ssh-agent -s)"
 echo "ssh-add $KEYNAME.pem"
 echo "ssh -A ubuntu@$PUBLICIP"
 
